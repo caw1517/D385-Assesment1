@@ -21,6 +21,7 @@ Expected Results:
 """
 
 import pytest
+import logging
 from app_student import app, validate_username, EQUIPMENT_PRICES
 
 
@@ -71,18 +72,17 @@ def test_non_numeric_days_handled(client):
         "Non-numeric days caused a crash! Implement try/except."
 
 
-def test_negative_days_rejected(client):
-    """
-    Test that negative days are rejected and don't calculate negative costs.
-    FAILS if you haven't implemented days > 0 validation.
-    """
-    response = client.post('/rent', data={
-        'equipment_type': 'Bulldozer',
-        'days': '-5'  # Invalid - negative days
-    })
+@pytest.mark.parametrize("days", ["0", "-5"])
+def test_nonpositive_days_rejected(client, days):
+    response = client.post(
+        "/rent",
+        data={"equipment_type": "Bulldozer", "days": days},
+    )
+
     assert response.status_code == 200
-    assert b'-2500' not in response.data, \
-        "Negative days calculated a negative cost! Add days > 0 validation."
+    assert b"Rental duration must be greater than 0" in response.data
+    assert b"Rental Confirmation" not in response.data
+    assert b"Total Cost:" not in response.data
 
 
 # ============================================================
@@ -186,6 +186,21 @@ def test_student_application_behavior(client):
 #              OPTIONAL: Additional Tests
 #    Add more tests here if you want extra validation
 # ============================================================
+def test_failed_login_rejected_and_logged(client, caplog):
+    caplog.set_level(logging.WARNING)
+    response = client.post(
+        "/login",
+        data={"username": "hacker", "password": "wrongpass"},
+        follow_redirects=True,
+    )
 
-# You may add additional test functions below to further
-# validate your application. These are optional but recommended.
+    assert response.status_code == 200
+    assert b"Invalid credentials." in response.data
+    assert b"Welcome back" not in response.data
+
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    msg = next((r.getMessage() for r in warnings if "failed login" in r.getMessage()), None)
+    assert msg is not None, "No failed-login WARNING was logged"
+    assert "hacker" in msg
+    assert "ip=127.0.0.1" in msg
+    assert "wrongpass" not in msg

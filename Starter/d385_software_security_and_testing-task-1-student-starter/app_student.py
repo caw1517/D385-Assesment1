@@ -26,6 +26,7 @@ Static Analysis Tools Used:
 
 # TODO: Import the logging module
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
+import logging
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkeyforflasksessions'
@@ -38,6 +39,11 @@ app.secret_key = 'supersecretkeyforflasksessions'
 # - Format: '%(asctime)s - %(levelname)s - %(message)s'
 # ------------------------------------------------------------
 
+logging.basicConfig(
+    filename="Troubleshooting_studentID.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 # Equipment Pricing Data
 EQUIPMENT_PRICES = {
@@ -69,7 +75,7 @@ def validate_username(username):
 @app.route('/')
 def home():
     # TODO: Log "Home page accessed" at INFO level
-    print("Home page accessed") # Replace with logger
+    logging.info("Event: home page requested; Action: rendering home page")
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -94,8 +100,7 @@ def login():
             flash(f"Welcome back, {username}!", "success")
             return redirect(url_for('home'))
         else:
-            # TODO: Log failed login (WARNING)
-            print(f"Login failed for {username}.")
+            logging.warning("Event: failed login; Action: login rejected; username=%r; ip=%s", username, ip_address)
             flash("Invalid credentials.", "danger")
             return redirect(url_for('login'))
 
@@ -115,15 +120,32 @@ def rent_equipment():
         # TODO: Wrap this section in a try/except block to catch crashes (ValueError, etc.)
         
         # Potential Crash: What if equipment_type is not in the dictionary?
-        daily_rate = EQUIPMENT_PRICES[equipment_type]
+        try:
+            daily_rate = EQUIPMENT_PRICES[equipment_type]
+        except KeyError: 
+            logging.error("Event: Unknown equipment. Rental Rejected; Equipment=%r", equipment_type)
+            flash("Please select a valid equipment type.", "danger")
+            return render_template("rent.html", rental_result=None)
         
         # Potential Crash: What if days_str is "abc"? (ValueError)
-        days = int(days_str)
+        try:
+            days = int(days_str)
+        except ValueError:
+            logging.warning("Event: invalid rental duration; Rental rejected; days=%r", days_str)
+            flash("Please enter a whole number of rental days.", "danger")
+            return render_template("rent.html", rental_result=None)
         
         # Logic Defect: What if days is -5? It currently calculates a negative cost!
         # TODO: Add an assertion or check to ensure days > 0
+
+        if days <= 0:
+            logging.warning("Event: nonpositive rental duration. Rental rejected; days=%r", days_str)
+            flash("Rental duration must be greater than 0", "danger")
+            return render_template("rent.html", rental_result=None)
         
         total_cost = daily_rate * days
+
+
         
         # TODO: Log the successful calculation (INFO)
         print(f"Calculated cost: {total_cost}")
