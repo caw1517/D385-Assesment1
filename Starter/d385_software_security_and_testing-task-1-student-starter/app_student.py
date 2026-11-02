@@ -55,6 +55,17 @@ EQUIPMENT_PRICES = {
 # ------------------------------------------------------------
 # Helper Functions
 # ------------------------------------------------------------
+def verify_equipment_catalog(catalog):
+    assert len(catalog) > 0, "Equipment catalog is empty"
+    logging.info("Event: catalog assertion passed; Action: startup continues; Check: catalog is not empty; items=%d", len(catalog))
+
+    assert all(isinstance(rate, (int, float)) and rate > 0 for rate in catalog.values()), \
+        "Every daily rate must be a number greater than 0"
+    logging.info("Event: catalog assertion passed; Action: startup continues; Check: every daily rate is numeric and > 0")
+
+
+verify_equipment_catalog(EQUIPMENT_PRICES)
+
 
 def validate_username(username):
     """

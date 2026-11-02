@@ -22,7 +22,7 @@ Expected Results:
 
 import pytest
 import logging
-from app_student import app, validate_username, EQUIPMENT_PRICES
+from app_student import app, validate_username, EQUIPMENT_PRICES, verify_equipment_catalog
 
 
 # ------------------------------------------------------------
@@ -204,3 +204,13 @@ def test_failed_login_rejected_and_logged(client, caplog):
     assert "hacker" in msg
     assert "ip=127.0.0.1" in msg
     assert "wrongpass" not in msg
+
+
+def test_equipment_catalog_assertions_pass(caplog):
+    caplog.set_level(logging.INFO)
+
+    verify_equipment_catalog(EQUIPMENT_PRICES)
+
+    messages = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
+    assert any("catalog is not empty" in m for m in messages)
+    assert any("every daily rate is numeric and > 0" in m for m in messages)
