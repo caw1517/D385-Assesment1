@@ -85,7 +85,6 @@ def validate_username(username):
 
 @app.route('/')
 def home():
-    # TODO: Log "Home page accessed" at INFO level
     logging.info("Event: home page requested; Action: rendering home page")
     return render_template('index.html')
 
@@ -106,8 +105,7 @@ def login():
         
         # Authentication Logic
         if validate_username(username) and password == "secret123":
-            # TODO: Log successful login
-            print(f"User {username} logged in.") 
+            logging.info("Event: successful login; Action: user signed in; username=%r; ip=%s", username, ip_address)
             flash(f"Welcome back, {username}!", "success")
             return redirect(url_for('home'))
         else:
@@ -134,7 +132,7 @@ def rent_equipment():
         try:
             daily_rate = EQUIPMENT_PRICES[equipment_type]
         except KeyError: 
-            logging.error("Event: Unknown equipment. Rental Rejected; Equipment=%r", equipment_type)
+            logging.error("Event: unknown equipment; Action: rental rejected; equipment=%r", equipment_type)
             flash("Please select a valid equipment type.", "danger")
             return render_template("rent.html", rental_result=None)
         
@@ -142,7 +140,7 @@ def rent_equipment():
         try:
             days = int(days_str)
         except ValueError:
-            logging.warning("Event: invalid rental duration; Rental rejected; days=%r", days_str)
+            logging.warning("Event: invalid rental duration; Action: rental rejected; days=%r", days_str)
             flash("Please enter a whole number of rental days.", "danger")
             return render_template("rent.html", rental_result=None)
         
@@ -150,7 +148,7 @@ def rent_equipment():
         # TODO: Add an assertion or check to ensure days > 0
 
         if days <= 0:
-            logging.warning("Event: nonpositive rental duration. Rental rejected; days=%r", days_str)
+            logging.warning("Event: nonpositive rental duration; Action: rental rejected; days=%r", days_str)
             flash("Rental duration must be greater than 0", "danger")
             return render_template("rent.html", rental_result=None)
         
@@ -158,8 +156,7 @@ def rent_equipment():
 
 
         
-        # TODO: Log the successful calculation (INFO)
-        print(f"Calculated cost: {total_cost}")
+        logging.info("Event: rental calculated; Action: rental total shown; equipment=%r; days=%s; total=%s", equipment_type, days, total_cost)
 
         rental_result = {
             "equipment": equipment_type,
@@ -175,5 +172,5 @@ def rent_equipment():
     return render_template('rent.html', rental_result=rental_result)
 
 if __name__ == '__main__':
-    print("Starting application...") # Replace with logger
+    logging.info("Event: application started; Action: starting flask server; port=%d", 5000)
     app.run(debug=False, port=5000)
