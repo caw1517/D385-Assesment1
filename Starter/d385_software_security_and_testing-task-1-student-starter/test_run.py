@@ -46,11 +46,8 @@ def client():
 # --- Exception Handling Tests ---
 # These will FAIL until you implement try/except blocks
 
-def test_invalid_equipment_type_handled(client):
-    """
-    Test that invalid equipment types don't crash the app.
-    FAILS if you haven't implemented try/except for KeyError.
-    """
+def test_invalid_equipment_type_handled(client, caplog):
+    caplog.set_level(logging.INFO)
     response = client.post('/rent', data={
         'equipment_type': 'SpaceShuttle',  # Invalid equipment
         'days': '3'
@@ -58,18 +55,41 @@ def test_invalid_equipment_type_handled(client):
     assert response.status_code == 200, \
         "Invalid equipment type caused a crash! Implement try/except."
 
+    assert b"Please select a valid equipment type." in response.data
+    assert b"Rental Confirmation" not in response.data
+    assert b"Total Cost:" not in response.data
 
-def test_non_numeric_days_handled(client):
-    """
-    Test that non-numeric days input doesn't crash the app.
-    FAILS if you haven't implemented try/except for ValueError.
-    """
+    errors = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
+    msg = next((m for m in errors if "unknown equipment" in m), None)
+    assert msg is not None, "No unknown-equipment ERROR was logged"
+    assert "SpaceShuttle" in msg
+
+    infos = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
+    assert not any("rental calculated" in m for m in infos)
+
+
+def test_non_numeric_days_handled(client, caplog):
+    caplog.set_level(logging.INFO)
+
     response = client.post('/rent', data={
         'equipment_type': 'Bulldozer',
         'days': 'abc'  # Invalid - not a number
     })
+
     assert response.status_code == 200, \
         "Non-numeric days caused a crash! Implement try/except."
+
+    assert b"Please enter a whole number of rental days." in response.data
+    assert b"Rental Confirmation" not in response.data
+    assert b"Total Cost:" not in response.data
+
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    msg = next((m for m in warnings if "invalid rental duration" in m), None)
+    assert msg is not None, "No invalid-duration WARNING was logged"
+    assert "abc" in msg
+
+    infos = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
+    assert not any("rental calculated" in m for m in infos)
 
 
 @pytest.mark.parametrize("days", ["0", "-5"])
