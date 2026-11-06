@@ -117,24 +117,13 @@ def test_nonpositive_days_rejected(client, days):
 # ------------------------------------------------------------
 
 def test_student_input_validation():
-    """
-    TODO: Write assertions to test input validation.
+    """Only usernames on the allowed list pass validation."""
+    for name in ["admin", "alice", "bob", "charlie"]:
+        assert validate_username(name) is True, f"{name} should be allowed"
 
-    Requirements:
-    - Use assert statements to verify expected behavior
-    - Test at least 2 different scenarios
-
-    Example ideas:
-    - Test that valid usernames (admin, alice, bob, charlie) return True
-    - Test that invalid usernames return False
-    - Test that the EQUIPMENT_PRICES dictionary contains expected values
-
-    Hint:
-        assert validate_username("admin") == True
-        assert validate_username("hacker") == False
-    """
-    # TODO: Write your assertions below (remove the pass statement)
-    pass
+    assert validate_username("hacker") is False
+    assert validate_username("") is False
+    assert validate_username("Admin") is False
 
 
 # ------------------------------------------------------------
@@ -144,28 +133,18 @@ def test_student_input_validation():
 # ------------------------------------------------------------
 
 def test_student_correct_output(client):
-    """
-    TODO: Write assertions to verify correct function outputs.
+    """Each piece of equipment shows the correct rental total."""
+    cases = [
+        ("Bulldozer", "3", b"Total Cost: $1500"),
+        ("Excavator", "5", b"Total Cost: $2250"),
+        ("Crane", "1", b"Total Cost: $800"), 
+    ]
+    for equipment, days, expected in cases:
+        response = client.post("/rent", data={"equipment_type": equipment, "days": days})
 
-    Requirements:
-    - Use assert statements to verify expected behavior
-    - Test at least 1 calculation or output
-
-    Example ideas:
-    - Bulldozer ($500/day) for 3 days should show $1500
-    - Excavator ($450/day) for 5 days should show $2250
-    - Crane ($800/day) for 2 days should show $1600
-
-    Hint:
-        response = client.post('/rent', data={
-            'equipment_type': 'Bulldozer',
-            'days': '3'
-        })
         assert response.status_code == 200
-        assert b'1500' in response.data
-    """
-    # TODO: Write your assertions below (remove the pass statement)
-    pass
+        assert b"Rental Confirmation" in response.data, f"{equipment}: no confirmation shown"
+        assert expected in response.data, f"{equipment} x {days} days: wrong total"
 
 
 # ------------------------------------------------------------
@@ -174,32 +153,26 @@ def test_student_correct_output(client):
 # Example: Test login, route accessibility, or error messages
 # ------------------------------------------------------------
 
-def test_student_application_behavior(client):
-    """
-    TODO: Write assertions to verify application behavior.
+def test_student_application_behavior(client, caplog):
+    """A valid login redirects home, greets the user, and logs an INFO event."""
+    caplog.set_level(logging.INFO)
+    creds = {"username": "admin", "password": "secret123"}
 
-    Requirements:
-    - Use assert statements to verify expected behavior
-    - Test at least 1 application feature
+    response = client.post("/login", data=creds, follow_redirects=False)
+    assert response.status_code == 302
 
-    Example ideas:
-    - Test that the home page returns status code 200
-    - Test that valid login credentials redirect (status 302)
-    - Test that invalid login shows "Invalid credentials" message
-    - Test that zero days are handled appropriately
+    response = client.post("/login", data=creds, follow_redirects=True)
+    assert response.status_code == 200
+    assert response.request.path == "/"
+    assert b"Welcome back, admin!" in response.data
+    assert b"Invalid credentials." not in response.data
 
-    Hint:
-        response = client.get('/')
-        assert response.status_code == 200
+    infos = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
+    msg = next((m for m in infos if "successful login" in m), None)
+    assert msg is not None, "No successful-login INFO was logged"
+    assert "admin" in msg
+    assert "secret123" not in msg
 
-        response = client.post('/login', data={
-            'username': 'admin',
-            'password': 'secret123'
-        }, follow_redirects=False)
-        assert response.status_code == 302  # Redirect on success
-    """
-    # TODO: Write your assertions below (remove the pass statement)
-    pass
 
 
 # ============================================================
